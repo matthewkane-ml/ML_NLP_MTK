@@ -1,110 +1,53 @@
-# Plantilla de Proyecto de Ciencia de Datos
+# Clasificador de Spam con NLP
 
-Esta plantilla está diseñada para impulsar proyectos de ciencia de datos proporcionando una configuración básica para conexiones de base de datos, procesamiento de datos, y desarrollo de modelos de aprendizaje automático. Incluye una organización estructurada de carpetas para tus conjuntos de datos y un conjunto de paquetes de Python predefinidos necesarios para la mayoría de las tareas de ciencia de datos.
+> Un detector de spam en URLs construido con vectorización TF-IDF y una Máquina de Vectores de Soporte ajustada — clasifica si una URL es spam o legítima.
 
-## Estructura
+---
 
-El proyecto está organizado de la siguiente manera:
+## Problema
 
-- **`src/app.py`** → Script principal de Python donde correrá tu proyecto.
-- **`src/explore.ipynb`** → Notebook para exploración y pruebas. Una vez finalizada la exploración, migra el código limpio a `app.py`.
-- **`src/utils.py`** → Funciones auxiliares, como conexión a bases de datos.
-- **`requirements.txt`** → Lista de paquetes de Python necesarios.
-- **`models/`** → Contendrá tus clases de modelos SQLAlchemy.
-- **`data/`** → Almacena los datasets en diferentes etapas:
-  - **`data/raw/`** → Datos sin procesar.
-  - **`data/interim/`** → Datos transformados temporalmente.
-  - **`data/processed/`** → Datos listos para análisis.
+Las URLs de spam son uno de los vectores más comunes de phishing, malware y contenido no deseado. Revisar URLs manualmente a escala es impracticable, por lo que este proyecto construye un clasificador binario basado en NLP que analiza el contenido textual de una URL y predice si es spam. El pipeline cubre el flujo completo de NLP: limpieza de texto, lematización, vectorización y ajuste del modelo.
 
+## Conjunto de datos
 
-## ⚡ Configuración Inicial en Codespaces (Recomendado)
+- **Fuente:** [4GeeksAcademy NLP Project Tutorial](https://raw.githubusercontent.com/4GeeksAcademy/NLP-project-tutorial/main/url_spam.csv)
+- **Tamaño:** CSV público de URLs etiquetadas
+- **Variable objetivo:** `is_spam` (0 = Legítima, 1 = Spam)
+- **Características clave:** Texto crudo de la URL, preprocesado y vectorizado con TF-IDF (top 5.000 características)
 
-No es necesario realizar ninguna configuración manual, ya que **Codespaces se configura automáticamente** con los archivos predefinidos que ha creado la academia para ti. Simplemente sigue estos pasos:
+## Metodología
 
-1. **Espera a que el entorno se configure automáticamente**.
-   - Todos los paquetes necesarios y la base de datos se instalarán por sí mismos.
-   - El `username` y `db_name` creados automáticamente están en el archivo **`.env`** en la raíz del proyecto.
-2. **Una vez que Codespaces esté listo, puedes comenzar a trabajar inmediatamente**.
+1. **Limpieza de texto:** Eliminación de caracteres no alfabéticos, tokens de un solo carácter y espacios en blanco múltiples con regex. Todo en minúsculas.
+2. **Lematización y eliminación de stopwords:** Aplicación de `WordNetLemmatizer` de NLTK, eliminación de stopwords en inglés y descarte de tokens de menos de 3 caracteres.
+3. **Vectorización:** `TfidfVectorizer` con `max_features=5000`, `max_df=0.8` y `min_df=5` para convertir los tokens de URL en una matriz de características dispersa.
+4. **Modelo base:** SVC lineal para establecer un rendimiento de referencia.
+5. **Ajuste de hiperparámetros:** `GridSearchCV` (5 pliegues) sobre tipo de kernel, `C`, `degree` y `gamma`. Mejor configuración: `kernel=poly`, `C=1000`, `degree=1`, `gamma=auto`.
+6. **Exportación del modelo:** Modelo optimizado guardado con `pickle` para despliegue futuro.
 
+## Resultados
 
-## 💻 Configuración en Local (Solo si no puedes usar Codespaces)
+El SVM optimizado (kernel polinomial, C=1000) superó al modelo base lineal. La precisión en el conjunto de prueba (20% de separación) fue evaluada con `accuracy_score`. SVM con TF-IDF es una combinación probada para clasificación de texto — el kernel polinomial con grado bajo captura eficazmente patrones de co-ocurrencia de tokens sin sobreajuste.
 
-**Prerrequisitos**
+## Tecnologías utilizadas
 
-Asegúrate de tener Python 3.11+ instalado en tu máquina. También necesitarás pip para instalar los paquetes de Python.
+`Python` · `pandas` · `scikit-learn` · `NLTK` · `regex` · `TF-IDF` · `pickle`
 
-**Instalación**
-
-Clona el repositorio del proyecto en tu máquina local.
-
-Navega hasta el directorio del proyecto e instala los paquetes de Python requeridos:
+## Ejecución local
 
 ```bash
+git clone https://github.com/matthewkane-ml/ML_NLP_MTK.git
+cd ML_NLP_MTK
 pip install -r requirements.txt
+jupyter notebook src/explore.ipynb
 ```
 
-**Crear una base de datos (si es necesario)**
+## Próximos pasos
 
-Crea una nueva base de datos dentro del motor Postgres personalizando y ejecutando el siguiente comando: 
+- Evaluar métricas adicionales más allá de la exactitud — precisión, recall y F1 son más importantes para datasets de spam desbalanceados
+- Probar Naive Bayes como referencia, que frecuentemente da resultados sorprendentemente buenos en tareas de texto tipo bag-of-words
+- Experimentar con n-gramas a nivel de carácter o tokenización específica del dominio para capturar mejor la estructura de la URL (subdominios, TLDs, segmentos de ruta)
+- Añadir una capa de despliegue — una interfaz Flask o Streamlit para verificación de URLs en tiempo real
 
-```bash
-$ psql -U postgres -c "DO \$\$ BEGIN 
-    CREATE USER mi_usuario WITH PASSWORD 'mi_contraseña'; 
-    CREATE DATABASE mi_base_de_datos OWNER mi_usuario; 
-END \$\$;"
-```
-Conéctate al motor Postgres para usar tu base de datos, manipular tablas y datos: 
+---
 
-```bash
-$ psql -U mi_usuario -d mi_base_de_datos
-```
-
-¡Una vez que estés dentro de PSQL podrás crear tablas, hacer consultas, insertar, actualizar o eliminar datos y mucho más!
-
-**Variables de entorno**
-
-Crea un archivo .env en el directorio raíz del proyecto para almacenar tus variables de entorno, como tu cadena de conexión a la base de datos:
-
-```makefile
-DATABASE_URL="postgresql://<USUARIO>:<CONTRASEÑA>@<HOST>:<PUERTO>/<NOMBRE_BD>"
-
-#example
-DATABASE_URL="postgresql://mi_usuario:mi_contraseña@localhost:5432/mi_base_de_datos"
-```
-
-## Ejecutando la Aplicación
-
-Para ejecutar la aplicación, ejecuta el script app.py desde la raíz del directorio del proyecto:
-
-```bash
-python src/app.py
-```
-
-## Añadiendo Modelos
-
-Para añadir clases de modelos SQLAlchemy, crea nuevos archivos de script de Python dentro del directorio models/. Estas clases deben ser definidas de acuerdo a tu esquema de base de datos.
-
-Definición del modelo de ejemplo (`models/example_model.py`):
-
-```py
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import String
-from sqlalchemy.orm import Mapped, mapped_column
-
-Base = declarative_base()
-
-class ExampleModel(Base):
-    __tablename__ = 'example_table'
-    id: Mapped[int] = mapped_column(primary_key=True)
-    username: Mapped[str] = mapped_column(unique=True)
-```
-
-## Trabajando con Datos
-
-Puedes colocar tus conjuntos de datos brutos en el directorio data/raw, conjuntos de datos intermedios en data/interim, y los conjuntos de datos procesados listos para el análisis en data/processed.
-
-Para procesar datos, puedes modificar el script app.py para incluir tus pasos de procesamiento de datos, utilizando pandas para la manipulación y análisis de datos.
-
-## Contribuyentes
-
-Este proyecto es mantenido por [matthewkane-ml](https://github.com/matthewkane-ml).
+**Autor:** Matthew Kane — [LinkedIn](https://www.linkedin.com/in/thomas-kane-392094410/) · [Portafolio GitHub](https://github.com/matthewkane-ml)
